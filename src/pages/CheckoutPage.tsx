@@ -43,7 +43,29 @@ const CheckoutPage = () => {
   const handleOpenPaymentApp = () => {
     if (!payment || payment === "cod") return;
     const paymentUrl = buildUpiLink(payment);
-    window.open(paymentUrl, "_blank");
+    
+    // Try opening via iframe to avoid page navigation
+    try {
+      const iframe = document.createElement("iframe");
+      iframe.style.display = "none";
+      iframe.src = paymentUrl;
+      document.body.appendChild(iframe);
+      
+      setTimeout(() => {
+        document.body.removeChild(iframe);
+      }, 1000);
+      
+      toast.success("Attempting to open payment app...");
+      
+      // Fallback message after timeout
+      setTimeout(() => {
+        if (!document.hidden) {
+          toast.info("If payment app didn't open, complete payment manually and check the box below.");
+        }
+      }, 3000);
+    } catch (error) {
+      toast.error("Unable to open payment app. Please complete payment manually.");
+    }
   };
 
   const saveOrderToBackend = async (order) => {
@@ -160,8 +182,14 @@ const CheckoutPage = () => {
                 <p className="text-xs text-muted-foreground mb-3">
                   Send payment to UPI ID: <span className="font-mono font-semibold text-primary">8008144268-2@axl</span>
                 </p>
-                <div className="mb-4 text-xs text-muted-foreground">
-                  After the payment is complete, check the box below and then click "Place Order".
+                <div className="mb-4 text-xs text-muted-foreground bg-primary/10 p-2 rounded">
+                  <strong>📱 Payment Instructions:</strong>
+                  <ol className="list-decimal list-inside mt-1 space-y-1">
+                    <li>Click "Open payment app" below</li>
+                    <li>Complete the payment in your {paymentOptions.find((p) => p.id === payment)?.label} app</li>
+                    <li>Return to this page and check the confirmation box</li>
+                    <li>Click "Place Order" to confirm</li>
+                  </ol>
                 </div>
                 <div className="flex items-center gap-2 mb-4">
                   <input
