@@ -18,14 +18,58 @@ const CheckoutPage = () => {
   const { items, total, clearCart } = useCart();
   const navigate = useNavigate();
   const [payment, setPayment] = useState<PaymentMethod | null>(null);
+  const [hasConfirmedPayment, setHasConfirmedPayment] = useState(false);
   const [form, setForm] = useState({ name: "", phone: "", address: "", city: "", pincode: "" });
+
+  const buildUpiLink = (method: PaymentMethod) => {
+    const params = new URLSearchParams({
+      pa: "8008144268-2@axl",
+      pn: "Anjoy Laddu",
+      am: total.toString(),
+      cu: "INR",
+      tn: `Anjoy Order via ${paymentOptions.find((p) => p.id === method)?.label ?? "UPI"}`,
+    });
+
+    return `upi://pay?${params.toString()}`;
+  };
+
+  const handlePaymentSelect = (method: PaymentMethod) => {
+    setPayment(method);
+    setHasConfirmedPayment(false);
+  };
+
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleOpenPaymentApp = () => {
+    if (!payment || payment === "cod") return;
+    const paymentUrl = buildUpiLink(payment);
+    window.open(paymentUrl, "_blank");
+  };
+
+  const saveOrderToBackend = async (order) => {
+    const apiBase = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:3000";
+    const response = await fetch(`${apiBase}/api/orders`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(order),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: "Unknown error" }));
+      throw new Error(error.error || "Failed to save order to backend");
+    }
+
+    return response.json();
+  };
 
   if (items.length === 0) {
     navigate("/cart");
     return null;
   }
 
-  const handleOrder = () => {
+  const generateOrderId = () => Math.floor(100000 + Math.random() * 900000).toString();
+
+  const handleOrder = async () => {
     if (!form.name || !form.phone || !form.address || !form.city || !form.pincode) {
       toast.error("Please fill all delivery details");
       return;
@@ -34,9 +78,42 @@ const CheckoutPage = () => {
       toast.error("Please select a payment method");
       return;
     }
-    toast.success("Order placed successfully! 🎉");
-    clearCart();
-    navigate("/");
+
+    const orderId = generateOrderId();
+    const estimatedDelivery = "30-45 minutes";
+    const orderPayload = {
+      orderId,
+      total,
+      payment,
+      estimatedDelivery,
+      customer: {
+        name: form.name,
+        phone: form.phone,
+        address: form.address,
+        city: form.city,
+        pincode: form.pincode,
+      },
+      items: items.map((item) => ({
+        id: item.laddu.id,
+        name: item.laddu.name,
+        price: item.laddu.price,
+        quantity: item.quantity,
+      })),
+    };
+
+    try {
+      setIsSaving(true);
+      await saveOrderToBackend(orderPayload);
+      toast.success("Order placed successfully! 🎉");
+      clearCart();
+      navigate("/order-success", {
+        state: { total, payment, orderId, estimatedDelivery },
+      });
+    } catch (error) {
+      toast.error(`${error instanceof Error ? error.message : "Unable to save order"}`);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -63,7 +140,7 @@ const CheckoutPage = () => {
               {paymentOptions.map((p) => (
                 <button
                   key={p.id}
-                  onClick={() => setPayment(p.id)}
+                  onClick={() => handlePaymentSelect(p.id)}
                   className={`p-4 rounded-lg border-2 text-left transition-all ${
                     payment === p.id
                       ? "border-primary bg-primary/5"
@@ -78,10 +155,29 @@ const CheckoutPage = () => {
 
             {payment && payment !== "cod" && (
               <div className="mt-4 p-4 bg-secondary rounded-lg">
-                <p className="text-sm text-foreground font-semibold mb-1">Pay ₹{total} via {paymentOptions.find((p) => p.id === payment)?.label}</p>
-                <p className="text-xs text-muted-foreground">
-                  Send payment to UPI ID: <span className="font-mono font-semibold text-primary">anjoy@upi</span> and click "Place Order".
+                <p className="text-sm text-foreground font-semibold mb-1">Selected: {paymentOptions.find((p) => p.id === payment)?.label}</p>
+                <p className="text-sm text-foreground mb-3">Pay ₹{total} using your app.</p>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Send payment to UPI ID: <span className="font-mono font-semibold text-primary">8008144268-2@axl</span>
                 </p>
+                <div className="mb-4 text-xs text-muted-foreground">
+                  After the payment is complete, check the box below and then click "Place Order".
+                </div>
+                <div className="flex items-center gap-2 mb-4">
+                  <input
+                    id="confirm-payment"
+                    type="checkbox"
+                    checked={hasConfirmedPayment}
+                    onChange={(e) => setHasConfirmedPayment(e.target.checked)}
+                    className="h-4 w-4 rounded border-border bg-background text-primary focus:ring-primary"
+                  />
+                  <label htmlFor="confirm-payment" className="text-sm text-foreground">
+                    I have paid ₹{total} to 8008144268-2@axl via {paymentOptions.find((p) => p.id === payment)?.label}.
+                  </label>
+                </div>
+                <Button size="sm" onClick={handleOpenPaymentApp} className="bg-primary text-primary-foreground hover:bg-primary/90">
+                  Open payment app
+                </Button>
               </div>
             )}
           </div>
@@ -105,6 +201,11 @@ const CheckoutPage = () => {
             <Button
               size="lg"
               onClick={handleOrder}
+              disabled={
+                !payment ||
+                isSaving ||
+                (payment !== "cod" && !hasConfirmedPayment)
+              }
               className="w-full mt-6 bg-primary text-primary-foreground hover:bg-primary/90 text-base"
             >
               Place Order
