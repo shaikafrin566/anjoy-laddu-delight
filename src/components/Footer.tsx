@@ -14,12 +14,13 @@ const Footer = () => (
             <Link to="/" className="block hover:opacity-100 transition-opacity">Home</Link>
             <Link to="/menu" className="block hover:opacity-100 transition-opacity">Menu</Link>
             <Link to="/contact" className="block hover:opacity-100 transition-opacity">Contact Us</Link>
+            <Link to="/seller-dashboard" className="block hover:opacity-100 transition-opacity">Seller Dashboard</Link>
           </div>
         </div>
         <div>
           <h4 className="font-heading text-lg font-semibold mb-3">Contact</h4>
           <div className="space-y-2 text-sm opacity-80">
-            <p>📞 +91 98765 43210</p>
+            <p>📞 8008144268</p>
             <p>✉️ hello@anjoy.in</p>
             <p>📍 Hyderabad, India</p>
           </div>

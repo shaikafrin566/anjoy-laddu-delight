@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import emailjs from '@emailjs/browser';
 
 type PaymentMethod = "paytm" | "phonepe" | "googlepay" | "cod";
 
@@ -20,10 +21,11 @@ const CheckoutPage = () => {
   const [payment, setPayment] = useState<PaymentMethod | null>(null);
   const [hasConfirmedPayment, setHasConfirmedPayment] = useState(false);
   const [form, setForm] = useState({ name: "", phone: "", address: "", city: "", pincode: "" });
+  const UPI_ID = import.meta.env.VITE_UPI_ID ?? "8008144268-2@axl";
 
   const buildUpiLink = (method: PaymentMethod) => {
     const params = new URLSearchParams({
-      pa: "8008144268-2@axl",
+      pa: UPI_ID,
       pn: "Anjoy Laddu",
       am: total.toString(),
       cu: "INR",
@@ -84,26 +86,87 @@ const CheckoutPage = () => {
     return response.json();
   };
 
-  if (items.length === 0) {
-    navigate("/cart");
-    return null;
-  }
+  const SELLER_WHATSAPP_NUMBER = "918008144268";
+  const SELLER_EMAIL = "nanib9269@gmail.com";
 
-  const generateOrderId = () => Math.floor(100000 + Math.random() * 900000).toString();
+  const buildWhatsAppUrl = (order) => {
+    const lines = [
+      `Anjoy Order #${order.orderId}`,
+      `Customer: ${order.customer.name}`,
+      `Phone: ${order.customer.phone}`,
+      `Address: ${order.customer.address}, ${order.customer.city} - ${order.customer.pincode}`,
+      `Payment Method: ${order.payment}`,
+      "Order Items:",
+      ...order.items.map((item) => `- ${item.name} x ${item.quantity} = ₹${item.price * item.quantity}`),
+      `Total: ₹${order.total}`,
+      `Estimated Delivery: ${order.estimatedDelivery}`,
+      "\nPlease confirm this order.",
+    ];
 
-  const handleOrder = async () => {
-    if (!form.name || !form.phone || !form.address || !form.city || !form.pincode) {
-      toast.error("Please fill all delivery details");
-      return;
+    const text = encodeURIComponent(lines.join("\n"));
+    return `https://wa.me/${SELLER_WHATSAPP_NUMBER}?text=${text}`;
+  };
+
+  const buildEmailUrl = (order) => {
+    const subject = encodeURIComponent(`New Anjoy Order #${order.orderId}`);
+    const body = encodeURIComponent([
+      `Anjoy Order #${order.orderId}`,
+      `Customer: ${order.customer.name}`,
+      `Phone: ${order.customer.phone}`,
+      `Address: ${order.customer.address}, ${order.customer.city} - ${order.customer.pincode}`,
+      `Payment Method: ${order.payment}`,
+      "Order Items:",
+      ...order.items.map((item) => `- ${item.name} x ${item.quantity} = ₹${item.price * item.quantity}`),
+      `Total: ₹${order.total}`,
+      `Estimated Delivery: ${order.estimatedDelivery}`,
+    ].join("\n"));
+
+    return `mailto:${SELLER_EMAIL}?subject=${subject}&body=${body}`;
+  };
+
+  const openWhatsAppWithOrder = (order) => {
+    const url = buildWhatsAppUrl(order);
+    window.open(url, "_blank");
+  };
+
+  const openEmailWithOrder = (order) => {
+    const url = buildEmailUrl(order);
+    window.open(url, "_blank");
+  };
+
+  const sendEmailNotification = async (order) => {
+    try {
+      // EmailJS configuration - Replace with your actual service details
+      const serviceId = 'your_service_id'; // Replace with your EmailJS service ID
+      const templateId = 'your_template_id'; // Replace with your EmailJS template ID
+      const publicKey = 'your_public_key'; // Replace with your EmailJS public key
+
+      const templateParams = {
+        to_email: SELLER_EMAIL,
+        order_id: order.orderId,
+        customer_name: order.customer.name,
+        customer_phone: order.customer.phone,
+        customer_address: `${order.customer.address}, ${order.customer.city} - ${order.customer.pincode}`,
+        payment_method: order.payment,
+        order_items: order.items.map(item => `${item.name} x ${item.quantity} = ₹${item.price * item.quantity}`).join('\n'),
+        total_amount: `₹${order.total}`,
+        estimated_delivery: order.estimatedDelivery,
+      };
+
+      await emailjs.send(serviceId, templateId, templateParams, publicKey);
+      console.log('Email sent successfully!');
+    } catch (error) {
+      console.error('Failed to send email:', error);
+      // Fallback to mailto if EmailJS fails
+      openEmailWithOrder(order);
     }
-    if (!payment) {
-      toast.error("Please select a payment method");
-      return;
-    }
+  };
 
+  const createOrderPayload = () => {
     const orderId = generateOrderId();
     const estimatedDelivery = "30-45 minutes";
-    const orderPayload = {
+
+    return {
       orderId,
       total,
       payment,
@@ -122,14 +185,50 @@ const CheckoutPage = () => {
         quantity: item.quantity,
       })),
     };
+  };
+
+  const handleSendOrderWhatsApp = () => {
+    if (!form.name || !form.phone || !form.address || !form.city || !form.pincode) {
+      toast.error("Please fill all delivery details before sending WhatsApp.");
+      return;
+    }
+    if (!payment) {
+      toast.error("Please select a payment method before sending WhatsApp.");
+      return;
+    }
+
+    const orderPayload = createOrderPayload();
+    openWhatsAppWithOrder(orderPayload);
+  };
+
+  if (items.length === 0) {
+    navigate("/cart");
+    return null;
+  }
+
+  const generateOrderId = () => Math.floor(100000 + Math.random() * 900000).toString();
+
+  const handleOrder = async () => {
+    if (!form.name || !form.phone || !form.address || !form.city || !form.pincode) {
+      toast.error("Please fill all delivery details");
+      return;
+    }
+    if (!payment) {
+      toast.error("Please select a payment method");
+      return;
+    }
+
+    const orderPayload = createOrderPayload();
 
     try {
       setIsSaving(true);
       await saveOrderToBackend(orderPayload);
+      openWhatsAppWithOrder(orderPayload);
+      await sendEmailNotification(orderPayload);
       toast.success("Order placed successfully! 🎉");
       clearCart();
       navigate("/order-success", {
-        state: { total, payment, orderId, estimatedDelivery },
+        state: { total, payment, orderId: orderPayload.orderId, estimatedDelivery: orderPayload.estimatedDelivery },
       });
     } catch (error) {
       toast.error(`${error instanceof Error ? error.message : "Unable to save order"}`);
@@ -180,7 +279,7 @@ const CheckoutPage = () => {
                 <p className="text-sm text-foreground font-semibold mb-1">Selected: {paymentOptions.find((p) => p.id === payment)?.label}</p>
                 <p className="text-sm text-foreground mb-3">Pay ₹{total} using your app.</p>
                 <p className="text-xs text-muted-foreground mb-3">
-                  Send payment to UPI ID: <span className="font-mono font-semibold text-primary">8008144268-2@axl</span>
+                  Send payment to UPI ID: <span className="font-mono font-semibold text-primary">{UPI_ID}</span>
                 </p>
                 <div className="mb-4 text-xs text-muted-foreground bg-primary/10 p-2 rounded">
                   <strong>📱 Payment Instructions:</strong>
@@ -190,6 +289,9 @@ const CheckoutPage = () => {
                     <li>Return to this page and check the confirmation box</li>
                     <li>Click "Place Order" to confirm</li>
                   </ol>
+                  <p className="mt-2 text-foreground">
+                    Note: this is a demo-style checkout flow. If PhonePe declines the UPI ID, replace it with a valid UPI ID, mobile number, or QR code.
+                  </p>
                 </div>
                 <div className="flex items-center gap-2 mb-4">
                   <input
@@ -200,7 +302,7 @@ const CheckoutPage = () => {
                     className="h-4 w-4 rounded border-border bg-background text-primary focus:ring-primary"
                   />
                   <label htmlFor="confirm-payment" className="text-sm text-foreground">
-                    I have paid ₹{total} to 8008144268-2@axl via {paymentOptions.find((p) => p.id === payment)?.label}.
+                    I have paid ₹{total} to {UPI_ID} via {paymentOptions.find((p) => p.id === payment)?.label}.
                   </label>
                 </div>
                 <Button size="sm" onClick={handleOpenPaymentApp} className="bg-primary text-primary-foreground hover:bg-primary/90">
@@ -226,18 +328,33 @@ const CheckoutPage = () => {
               </div>
             </div>
 
-            <Button
-              size="lg"
-              onClick={handleOrder}
-              disabled={
-                !payment ||
-                isSaving ||
-                (payment !== "cod" && !hasConfirmedPayment)
-              }
-              className="w-full mt-6 bg-primary text-primary-foreground hover:bg-primary/90 text-base"
-            >
-              Place Order
-            </Button>
+            <div className="space-y-3">
+              <Button
+                size="lg"
+                onClick={handleSendOrderWhatsApp}
+                disabled={
+                  !payment ||
+                  isSaving ||
+                  (payment !== "cod" && !hasConfirmedPayment)
+                }
+                className="w-full mt-6 bg-green-600 text-primary-foreground hover:bg-green-700 text-base"
+              >
+                Send Order on WhatsApp
+              </Button>
+
+              <Button
+                size="lg"
+                onClick={handleOrder}
+                disabled={
+                  !payment ||
+                  isSaving ||
+                  (payment !== "cod" && !hasConfirmedPayment)
+                }
+                className="w-full bg-primary text-primary-foreground hover:bg-primary/90 text-base"
+              >
+                Place Order
+              </Button>
+            </div>
           </div>
         </div>
       </div>

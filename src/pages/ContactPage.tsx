@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -8,7 +8,7 @@ import { Phone, Mail, MapPin } from "lucide-react";
 const ContactPage = () => {
   const [form, setForm] = useState({ name: "", email: "", message: "" });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!form.name || !form.email || !form.message) {
       toast.error("Please fill all fields");
@@ -31,7 +31,7 @@ const ContactPage = () => {
             <h2 className="font-heading text-2xl font-semibold text-foreground mb-6">Get in Touch</h2>
             <div className="space-y-6">
               {[
-                { icon: Phone, label: "Phone", value: "+91 98765 43210" },
+                { icon: Phone, label: "Phone", value: "+91 8008144268" },
                 { icon: Mail, label: "Email", value: "hello@anjoy.in" },
                 { icon: MapPin, label: "Address", value: "Hyderabad, Telangana, India" },
               ].map((c) => (
