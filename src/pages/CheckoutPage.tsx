@@ -53,6 +53,13 @@ const CheckoutPage = () => {
     if (!payment || payment === "cod") return;
     const paymentUrl = buildUpiLink(payment);
 
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+    if (!isMobile) {
+      toast.info("UPI apps can only be opened on mobile devices. Please scan the QR code instead.");
+      return;
+    }
+
     try {
       window.location.href = paymentUrl;
       toast.success("Opening payment app...");
