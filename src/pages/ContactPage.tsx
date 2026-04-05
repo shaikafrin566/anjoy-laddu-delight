@@ -32,7 +32,7 @@ const ContactPage = () => {
             <div className="space-y-6">
               {[
                 { icon: Phone, label: "Phone", value: "+91 8008144268" },
-                { icon: Mail, label: "Email", value: "hello@anjoy.in" },
+                { icon: Mail, label: "Email", value: "nanib9269@gmail.com" },
                 { icon: MapPin, label: "Address", value: "Hyderabad, Telangana, India" },
               ].map((c) => (
                 <div key={c.label} className="flex items-start gap-4">
@@ -41,7 +41,13 @@ const ContactPage = () => {
                   </div>
                   <div>
                     <p className="font-semibold text-foreground text-sm">{c.label}</p>
-                    <p className="text-muted-foreground text-sm">{c.value}</p>
+                    {c.label === "Email" ? (
+                      <a href={`mailto:${c.value}`} className="text-muted-foreground text-sm hover:text-primary transition-colors">
+                        {c.value}
+                      </a>
+                    ) : (
+                      <p className="text-muted-foreground text-sm">{c.value}</p>
+                    )}
                   </div>
                 </div>
               ))}

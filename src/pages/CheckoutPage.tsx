@@ -21,9 +21,10 @@ const CheckoutPage = () => {
   const [payment, setPayment] = useState<PaymentMethod | null>(null);
   const [hasConfirmedPayment, setHasConfirmedPayment] = useState(false);
   const [form, setForm] = useState({ name: "", phone: "", address: "", city: "", pincode: "" });
-  const UPI_ID = import.meta.env.VITE_UPI_ID ?? "8008144268@icici";
+  const UPI_ID = import.meta.env.VITE_UPI_ID ?? "8008144268@ybl";
   const PAYMENT_MOBILE = "8008144268";
   const SELLER_WHATSAPP_NUMBER = "918008144268";
+  const SELLER_EMAIL = "nanib9269@gmail.com";
 
   const buildUpiLink = (method: PaymentMethod | "qr") => {
     const amount = grandTotal.toFixed(2);

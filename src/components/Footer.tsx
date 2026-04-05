@@ -21,7 +21,7 @@ const Footer = () => (
           <h4 className="font-heading text-lg font-semibold mb-3">Contact</h4>
           <div className="space-y-2 text-sm opacity-80">
             <p>📞 8008144268</p>
-            <p>✉️ hello@anjoy.in</p>
+            <p>✉️ nanib9269@gmail.com</p>
             <p>📍 Hyderabad, India</p>
           </div>
         </div>
