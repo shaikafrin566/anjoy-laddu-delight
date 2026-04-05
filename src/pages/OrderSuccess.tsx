@@ -5,7 +5,6 @@ interface OrderState {
   total?: number;
   payment?: string;
   orderId?: string;
-  estimatedDelivery?: string;
 }
 
 const OrderSuccess = () => {
@@ -15,7 +14,6 @@ const OrderSuccess = () => {
   const total = state?.total ?? 0;
   const payment = state?.payment ?? "Payment method";
   const orderId = state?.orderId ?? "N/A";
-  const estimatedDelivery = state?.estimatedDelivery ?? "Soon";
 
   return (
     <div className="py-20">
@@ -40,10 +38,6 @@ const OrderSuccess = () => {
             <div className="flex justify-between text-sm text-foreground/80">
               <span>Payment method</span>
               <span className="font-semibold capitalize">{payment}</span>
-            </div>
-            <div className="flex justify-between text-sm text-foreground/80">
-              <span>Estimated delivery</span>
-              <span className="font-semibold">{estimatedDelivery}</span>
             </div>
             <div className="text-sm text-muted-foreground">
               We will contact you soon to confirm the delivery details. Please keep your phone nearby.

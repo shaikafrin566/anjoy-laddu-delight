@@ -5,8 +5,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import emailjs from '@emailjs/browser';
-// @ts-ignore
-import QRCode from "qrcode.react";
+import { QRCodeSVG } from "qrcode.react";
 
 type PaymentMethod = "paytm" | "phonepe" | "googlepay" | "cod";
 
@@ -282,7 +281,7 @@ const CheckoutPage = () => {
                 {/* QR Code Section */}
                 <div className="mb-4 p-3 bg-primary/5 rounded-lg border border-primary/20 flex flex-col items-center">
                   <p className="text-xs font-semibold text-foreground mb-2">📱 Scan to Pay</p>
-                  <QRCode
+                  <QRCodeSVG
                     value={buildUpiLink(payment)}
                     size={180}
                     level="H"

@@ -59,6 +59,12 @@ app.post("/api/orders", (req, res) => {
   res.status(201).json({ message: "Order saved", order });
 });
 
-app.listen(port, () => {
-  console.log(`Order API listening at http://localhost:${port}`);
-});
+// For Vercel serverless deployment
+export default app;
+
+// For local development
+if (process.env.NODE_ENV !== "production") {
+  app.listen(port, () => {
+    console.log(`Order API listening at http://localhost:${port}`);
+  });
+}
