@@ -27,7 +27,7 @@ const CheckoutPage = () => {
 
   const buildUpiLink = (method: PaymentMethod) => {
     const params = new URLSearchParams({
-      pa: PAYMENT_MOBILE,
+      pa: UPI_ID, // Use UPI_ID (e.g., 8008144268@icici) instead of mobile number
       pn: "Anjoy Laddu",
       am: grandTotal.toString(),
       cu: "INR",
@@ -55,7 +55,7 @@ const CheckoutPage = () => {
 
       setTimeout(() => {
         if (!document.hidden) {
-          toast.info("If the app didn't open, manually pay to mobile number 8008144268 or UPI ID 8008144268@axl.");
+          toast.info("If the app didn't open, manually pay to mobile number 8008144268 or UPI ID 8008144268@icici.");
         }
       }, 3000);
     } catch (error) {
@@ -64,19 +64,29 @@ const CheckoutPage = () => {
   };
 
   const saveOrderToBackend = async (order) => {
-    const apiBase = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:3000";
-    const response = await fetch(`${apiBase}/api/orders`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(order),
-    });
+    // Determine the API base URL. Use relative URL in production to avoid localhost issues.
+    const isProduction = window.location.hostname !== "localhost";
+    const apiBase = import.meta.env.VITE_API_BASE_URL && !isProduction 
+      ? import.meta.env.VITE_API_BASE_URL 
+      : isProduction ? "" : "http://localhost:3000";
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: "Unknown error" }));
-      throw new Error(error.error || "Failed to save order to backend");
+    try {
+      const response = await fetch(`${apiBase}/api/orders`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(order),
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ error: "Unknown error" }));
+        throw new Error(error.error || "Failed to save order to backend");
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error("Backend save error:", error);
+      throw error; // Let the caller handle it
     }
-
-    return response.json();
   };
 
   const SELLER_WHATSAPP_NUMBER = "918008144268";
@@ -215,16 +225,26 @@ const CheckoutPage = () => {
 
     try {
       setIsSaving(true);
-      await saveOrderToBackend(orderPayload);
+      
+      let backendSaved = false;
+      try {
+        await saveOrderToBackend(orderPayload);
+        backendSaved = true;
+      } catch (error) {
+        console.error("Could not save order to backend, but will proceed to WhatsApp:", error);
+        toast.error("Note: Order was not saved to our database, but we will still send it via WhatsApp.");
+      }
+      
       openWhatsAppWithOrder(orderPayload);
       await sendEmailNotification(orderPayload);
-      toast.success("Order placed successfully! 🎉");
+      
+      toast.success(backendSaved ? "Order placed successfully! 🎉" : "Order sent to WhatsApp! 🎉");
       clearCart();
       navigate("/order-success", {
         state: { total: grandTotal, payment, orderId: orderPayload.orderId },
       });
     } catch (error) {
-      toast.error(`${error instanceof Error ? error.message : "Unable to save order"}`);
+      toast.error(`${error instanceof Error ? error.message : "Unable to process order"}`);
     } finally {
       setIsSaving(false);
     }
