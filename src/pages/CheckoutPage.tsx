@@ -25,16 +25,25 @@ const CheckoutPage = () => {
   const UPI_ID = import.meta.env.VITE_UPI_ID ?? "8008144268@icici";
   const PAYMENT_MOBILE = "8008144268";
 
-  const buildUpiLink = (method: PaymentMethod) => {
-    const params = new URLSearchParams({
-      pa: UPI_ID, // Use UPI_ID (e.g., 8008144268@icici) instead of mobile number
-      pn: "Anjoy Laddu",
-      am: grandTotal.toString(),
-      cu: "INR",
-      tn: `Anjoy Order via ${paymentOptions.find((p) => p.id === method)?.label ?? "UPI"}`,
-    });
+  const buildUpiLink = (method: PaymentMethod | "qr") => {
+    const amount = grandTotal.toFixed(2);
+    const payeeName = encodeURIComponent("Anjoy Laddu");
+    const transactionNote = encodeURIComponent(`Anjoy Order via ${method === "qr" ? "QR Code" : (paymentOptions.find((p) => p.id === method)?.label ?? "UPI")}`);
+    
+    // Base UPI parameters
+    const baseParams = `pa=${UPI_ID}&pn=${payeeName}&am=${amount}&cu=INR&tn=${transactionNote}`;
 
-    return `upi://pay?${params.toString()}`;
+    // Specific app schemes can sometimes be more reliable in webviews when clicking a button
+    if (method === "paytm") {
+      return `paytmmp://pay?${baseParams}`;
+    } else if (method === "phonepe") {
+      return `phonepe://pay?${baseParams}`;
+    } else if (method === "googlepay") {
+      return `tez://upi/pay?${baseParams}`;
+    }
+
+    // Default upi:// scheme for "qr" or fallback
+    return `upi://pay?${baseParams}`;
   };
 
   const handlePaymentSelect = (method: PaymentMethod) => {
@@ -302,7 +311,7 @@ const CheckoutPage = () => {
                 <div className="mb-4 p-3 bg-primary/5 rounded-lg border border-primary/20 flex flex-col items-center">
                   <p className="text-xs font-semibold text-foreground mb-2">📱 Scan to Pay</p>
                   <QRCodeSVG
-                    value={buildUpiLink(payment)}
+                    value={buildUpiLink("qr")}
                     size={180}
                     level="H"
                     includeMargin={true}
