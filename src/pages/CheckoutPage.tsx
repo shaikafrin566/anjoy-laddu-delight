@@ -5,6 +5,8 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import emailjs from '@emailjs/browser';
+// @ts-ignore
+import QRCode from "qrcode.react";
 
 type PaymentMethod = "paytm" | "phonepe" | "googlepay" | "cod";
 
@@ -16,18 +18,19 @@ const paymentOptions: { id: PaymentMethod; label: string; icon: string }[] = [
 ];
 
 const CheckoutPage = () => {
-  const { items, total, clearCart } = useCart();
+  const { items, total, deliveryCharge, grandTotal, clearCart } = useCart();
   const navigate = useNavigate();
   const [payment, setPayment] = useState<PaymentMethod | null>(null);
   const [hasConfirmedPayment, setHasConfirmedPayment] = useState(false);
   const [form, setForm] = useState({ name: "", phone: "", address: "", city: "", pincode: "" });
-  const UPI_ID = import.meta.env.VITE_UPI_ID ?? "8008144268-2@axl";
+  const UPI_ID = import.meta.env.VITE_UPI_ID ?? "8008144268@icici";
+  const PAYMENT_MOBILE = "8008144268";
 
   const buildUpiLink = (method: PaymentMethod) => {
     const params = new URLSearchParams({
-      pa: UPI_ID,
+      pa: PAYMENT_MOBILE,
       pn: "Anjoy Laddu",
-      am: total.toString(),
+      am: grandTotal.toString(),
       cu: "INR",
       tn: `Anjoy Order via ${paymentOptions.find((p) => p.id === method)?.label ?? "UPI"}`,
     });
@@ -45,24 +48,15 @@ const CheckoutPage = () => {
   const handleOpenPaymentApp = () => {
     if (!payment || payment === "cod") return;
     const paymentUrl = buildUpiLink(payment);
-    
-    // Try opening via iframe to avoid page navigation
+
     try {
-      const iframe = document.createElement("iframe");
-      iframe.style.display = "none";
-      iframe.src = paymentUrl;
-      document.body.appendChild(iframe);
-      
-      setTimeout(() => {
-        document.body.removeChild(iframe);
-      }, 1000);
-      
+      // Directly navigate to the UPI link so the app opens reliably.
+      window.location.href = paymentUrl;
       toast.success("Attempting to open payment app...");
-      
-      // Fallback message after timeout
+
       setTimeout(() => {
         if (!document.hidden) {
-          toast.info("If payment app didn't open, complete payment manually and check the box below.");
+          toast.info("If the app didn't open, manually pay to mobile number 8008144268 or UPI ID 8008144268@axl.");
         }
       }, 3000);
     } catch (error) {
@@ -168,7 +162,7 @@ const CheckoutPage = () => {
 
     return {
       orderId,
-      total,
+      total: grandTotal,
       payment,
       estimatedDelivery,
       customer: {
@@ -228,7 +222,7 @@ const CheckoutPage = () => {
       toast.success("Order placed successfully! 🎉");
       clearCart();
       navigate("/order-success", {
-        state: { total, payment, orderId: orderPayload.orderId, estimatedDelivery: orderPayload.estimatedDelivery },
+        state: { total: grandTotal, payment, orderId: orderPayload.orderId },
       });
     } catch (error) {
       toast.error(`${error instanceof Error ? error.message : "Unable to save order"}`);
@@ -277,21 +271,37 @@ const CheckoutPage = () => {
             {payment && payment !== "cod" && (
               <div className="mt-4 p-4 bg-secondary rounded-lg">
                 <p className="text-sm text-foreground font-semibold mb-1">Selected: {paymentOptions.find((p) => p.id === payment)?.label}</p>
-                <p className="text-sm text-foreground mb-3">Pay ₹{total} using your app.</p>
+                <p className="text-sm text-foreground mb-3">Pay ₹{grandTotal} using your app.</p>
                 <p className="text-xs text-muted-foreground mb-3">
-                  Send payment to UPI ID: <span className="font-mono font-semibold text-primary">{UPI_ID}</span>
+                  Send payment to mobile number: <span className="font-mono font-semibold text-primary">{PAYMENT_MOBILE}</span>
                 </p>
+                <p className="text-xs text-muted-foreground mb-4">
+                  Or UPI ID: <span className="font-mono font-semibold text-primary">{UPI_ID}</span>
+                </p>
+
+                {/* QR Code Section */}
+                <div className="mb-4 p-3 bg-primary/5 rounded-lg border border-primary/20 flex flex-col items-center">
+                  <p className="text-xs font-semibold text-foreground mb-2">📱 Scan to Pay</p>
+                  <QRCode
+                    value={buildUpiLink(payment)}
+                    size={180}
+                    level="H"
+                    includeMargin={true}
+                    fgColor="#000000"
+                    bgColor="#ffffff"
+                  />
+                  <p className="text-xs text-muted-foreground mt-2 text-center">Using {paymentOptions.find((p) => p.id === payment)?.label}</p>
+                </div>
+
                 <div className="mb-4 text-xs text-muted-foreground bg-primary/10 p-2 rounded">
                   <strong>📱 Payment Instructions:</strong>
                   <ol className="list-decimal list-inside mt-1 space-y-1">
-                    <li>Click "Open payment app" below</li>
-                    <li>Complete the payment in your {paymentOptions.find((p) => p.id === payment)?.label} app</li>
-                    <li>Return to this page and check the confirmation box</li>
-                    <li>Click "Place Order" to confirm</li>
+                    <li>Scan the QR code above with {paymentOptions.find((p) => p.id === payment)?.label}</li>
+                    <li>Or manually enter mobile number: {PAYMENT_MOBILE}</li>
+                    <li>Complete the payment in your app</li>
+                    <li>Return and check the confirmation box</li>
+                    <li>Click "Place Order" to finalize</li>
                   </ol>
-                  <p className="mt-2 text-foreground">
-                    Note: this is a demo-style checkout flow. If PhonePe declines the UPI ID, replace it with a valid UPI ID, mobile number, or QR code.
-                  </p>
                 </div>
                 <div className="flex items-center gap-2 mb-4">
                   <input
@@ -302,7 +312,7 @@ const CheckoutPage = () => {
                     className="h-4 w-4 rounded border-border bg-background text-primary focus:ring-primary"
                   />
                   <label htmlFor="confirm-payment" className="text-sm text-foreground">
-                    I have paid ₹{total} to {UPI_ID} via {paymentOptions.find((p) => p.id === payment)?.label}.
+                    I have paid ₹{grandTotal} to {PAYMENT_MOBILE} via {paymentOptions.find((p) => p.id === payment)?.label}.
                   </label>
                 </div>
                 <Button size="sm" onClick={handleOpenPaymentApp} className="bg-primary text-primary-foreground hover:bg-primary/90">
@@ -322,9 +332,19 @@ const CheckoutPage = () => {
                   <span className="font-semibold text-foreground">₹{item.laddu.price * item.quantity}</span>
                 </div>
               ))}
-              <div className="border-t border-border pt-3 flex justify-between">
-                <span className="font-heading text-lg font-semibold text-foreground">Total</span>
-                <span className="font-heading text-xl font-bold text-primary">₹{total}</span>
+              <div className="border-t border-border pt-3 space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-foreground">Subtotal</span>
+                  <span className="font-semibold text-foreground">₹{total}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-foreground">Delivery Charge</span>
+                  <span className="font-semibold text-foreground">₹{deliveryCharge}</span>
+                </div>
+                <div className="border-t border-border pt-2 flex justify-between">
+                  <span className="font-heading text-lg font-semibold text-foreground">Total</span>
+                  <span className="font-heading text-xl font-bold text-primary">₹{grandTotal}</span>
+                </div>
               </div>
             </div>
 

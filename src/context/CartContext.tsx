@@ -14,6 +14,8 @@ interface CartContextType {
   clearCart: () => void;
   total: number;
   itemCount: number;
+  deliveryCharge: number;
+  grandTotal: number;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -39,9 +41,11 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   const clearCart = () => setItems([]);
   const total = items.reduce((sum, i) => sum + i.laddu.price * i.quantity, 0);
   const itemCount = items.reduce((sum, i) => sum + i.quantity, 0);
+  const deliveryCharge = itemCount === 1 ? 50 : itemCount >= 2 ? 25 : 0;
+  const grandTotal = total + deliveryCharge;
 
   return (
-    <CartContext.Provider value={{ items, addToCart, removeFromCart, updateQuantity, clearCart, total, itemCount }}>
+    <CartContext.Provider value={{ items, addToCart, removeFromCart, updateQuantity, clearCart, total, itemCount, deliveryCharge, grandTotal }}>
       {children}
     </CartContext.Provider>
   );

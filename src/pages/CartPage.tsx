@@ -4,7 +4,7 @@ import { Minus, Plus, Trash2 } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const CartPage = () => {
-  const { items, updateQuantity, removeFromCart, total } = useCart();
+  const { items, updateQuantity, removeFromCart, total, deliveryCharge, grandTotal } = useCart();
 
   if (items.length === 0) return (
     <div className="container mx-auto px-4 py-20 text-center">
@@ -46,12 +46,22 @@ const CartPage = () => {
         </div>
 
         <div className="mt-8 bg-card rounded-lg p-6 border border-border">
-          <div className="flex items-center justify-between mb-6">
-            <span className="font-heading text-xl font-semibold text-foreground">Total</span>
-            <span className="font-heading text-2xl font-bold text-primary">₹{total}</span>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="font-heading text-lg text-foreground">Subtotal</span>
+              <span className="font-heading text-lg font-semibold text-foreground">₹{total}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="font-heading text-lg text-foreground">Delivery Charge</span>
+              <span className="font-heading text-lg font-semibold text-foreground">₹{deliveryCharge}</span>
+            </div>
+            <div className="border-t border-border pt-3 flex items-center justify-between">
+              <span className="font-heading text-xl font-semibold text-foreground">Total</span>
+              <span className="font-heading text-2xl font-bold text-primary">₹{grandTotal}</span>
+            </div>
           </div>
           <Link to="/checkout">
-            <Button size="lg" className="w-full bg-primary text-primary-foreground hover:bg-primary/90 text-base">
+            <Button size="lg" className="w-full bg-primary text-primary-foreground hover:bg-primary/90 text-base mt-6">
               Proceed to Checkout
             </Button>
           </Link>
