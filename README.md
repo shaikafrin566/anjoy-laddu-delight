@@ -60,8 +60,9 @@ npm run server
 Create a `.env` file in the root directory:
 
 ```env
-VITE_UPI_ID=8008144268@icici
+VITE_UPI_ID=8008144268@ybl
 VITE_API_BASE_URL=http://localhost:3000
+SELLER_EMAIL=nanib9269@gmail.com
 ```
 
 ## Deployment
