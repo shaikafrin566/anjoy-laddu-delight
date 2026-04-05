@@ -30,7 +30,7 @@ const CheckoutPage = () => {
   const buildUpiLink = (method: PaymentMethod | "qr") => {
     // Some apps prefer whole numbers without decimals, others need 2 decimals. 
     // Using simple format that's most widely accepted.
-    const amount = grandTotal.toString();
+    const amount = grandTotal.toFixed(2);
     const payeeName = "Anjoy Laddu";
     const transactionNote = `Anjoy Order ${Math.random().toString(36).substring(7)}`;
     
