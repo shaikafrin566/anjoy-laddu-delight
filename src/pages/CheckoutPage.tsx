@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { QRCodeSVG } from "qrcode.react";
+import { Copy, Smartphone } from "lucide-react";
 
 type PaymentMethod = "paytm" | "phonepe" | "googlepay" | "cod";
 
@@ -27,18 +28,29 @@ const CheckoutPage = () => {
   const SELLER_EMAIL = "nanib9269@gmail.com";
 
   const buildUpiLink = (method: PaymentMethod | "qr") => {
-    const amount = grandTotal.toFixed(2);
-    const payeeName = encodeURIComponent("Anjoy Laddu");
-    const transactionNote = encodeURIComponent(`Anjoy Order via ${method === "qr" ? "QR Code" : (paymentOptions.find((p) => p.id === method)?.label ?? "UPI")}`);
+    // Some apps prefer whole numbers without decimals, others need 2 decimals. 
+    // Using simple format that's most widely accepted.
+    const amount = grandTotal.toString();
+    const payeeName = "Anjoy Laddu";
+    const transactionNote = `Anjoy Order ${Math.random().toString(36).substring(7)}`;
     
     // Base UPI parameters
-    const baseParams = `pa=${UPI_ID}&pn=${payeeName}&am=${amount}&cu=INR&tn=${transactionNote}`;
+    const params = new URLSearchParams({
+      pa: UPI_ID,
+      pn: payeeName,
+      am: amount,
+      cu: "INR",
+      tn: transactionNote,
+    });
+
+    const baseParams = params.toString();
 
     // Specific app schemes for direct opening
     if (method === "paytm") return `paytmmp://pay?${baseParams}`;
     if (method === "phonepe") return `phonepe://pay?${baseParams}`;
     if (method === "googlepay") return `tez://upi/pay?${baseParams}`;
 
+    // Standard upi:// scheme
     return `upi://pay?${baseParams}`;
   };
 
@@ -48,6 +60,11 @@ const CheckoutPage = () => {
   };
 
   const [isSaving, setIsSaving] = useState(false);
+
+  const copyToClipboard = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success(`${label} copied!`);
+  };
 
   const handleOpenPaymentApp = () => {
     if (!payment || payment === "cod") return;
@@ -61,7 +78,8 @@ const CheckoutPage = () => {
     }
 
     try {
-      window.location.href = paymentUrl;
+      // Direct assignment works better for deep links
+      window.location.assign(paymentUrl);
       toast.success("Opening payment app...");
       
       setTimeout(() => {
@@ -70,7 +88,8 @@ const CheckoutPage = () => {
         }
       }, 3000);
     } catch (error) {
-      toast.error("Unable to open app. Please pay manually.");
+      // Fallback to standard upi:// scheme
+      window.location.href = `upi://pay?pa=${UPI_ID}&am=${grandTotal}&cu=INR`;
     }
   };
 
@@ -202,28 +221,53 @@ const CheckoutPage = () => {
 
             {payment && payment !== "cod" && (
               <div className="p-4 bg-secondary rounded-lg border border-border">
-                <p className="text-sm font-semibold mb-2">Pay ₹{grandTotal.toFixed(2)} to {PAYMENT_MOBILE}</p>
+                <p className="text-sm font-semibold mb-3">Complete Payment: ₹{grandTotal}</p>
                 
                 {/* QR Code */}
-                <div className="mb-4 flex flex-col items-center p-3 bg-white rounded-lg">
+                <div className="mb-4 flex flex-col items-center p-3 bg-white rounded-lg shadow-sm">
                   <QRCodeSVG value={buildUpiLink("qr")} size={160} />
-                  <p className="text-[10px] text-gray-500 mt-2">Scan with any UPI app</p>
+                  <p className="text-[10px] text-gray-500 mt-2 font-medium">SCAN WITH ANY APP</p>
+                </div>
+
+                {/* Manual Details with Copy Buttons */}
+                <div className="space-y-2 mb-4">
+                  <div className="flex items-center justify-between p-2 bg-background rounded border border-border">
+                    <div className="text-[11px]">
+                      <span className="text-muted-foreground block">UPI ID</span>
+                      <span className="font-mono font-bold">{UPI_ID}</span>
+                    </div>
+                    <Button variant="ghost" size="icon" onClick={() => copyToClipboard(UPI_ID, "UPI ID")} className="h-8 w-8">
+                      <Copy className="h-3 w-3" />
+                    </Button>
+                  </div>
+                  <div className="flex items-center justify-between p-2 bg-background rounded border border-border">
+                    <div className="text-[11px]">
+                      <span className="text-muted-foreground block">Mobile Number</span>
+                      <span className="font-mono font-bold">{PAYMENT_MOBILE}</span>
+                    </div>
+                    <Button variant="ghost" size="icon" onClick={() => copyToClipboard(PAYMENT_MOBILE, "Mobile number")} className="h-8 w-8">
+                      <Copy className="h-3 w-3" />
+                    </Button>
+                  </div>
                 </div>
 
                 <div className="space-y-3">
-                  <div className="flex items-center gap-2">
+                  <Button size="sm" onClick={handleOpenPaymentApp} className="w-full flex items-center justify-center gap-2">
+                    <Smartphone className="h-4 w-4" />
+                    Open Payment App
+                  </Button>
+                  <div className="flex items-start gap-2 pt-1">
                     <input
                       id="confirm-pay"
                       type="checkbox"
                       checked={hasConfirmedPayment}
                       onChange={(e) => setHasConfirmedPayment(e.target.checked)}
-                      className="h-4 w-4"
+                      className="mt-1 h-4 w-4 rounded border-gray-300"
                     />
-                    <label htmlFor="confirm-pay" className="text-xs">I have completed the payment</label>
+                    <label htmlFor="confirm-pay" className="text-[11px] leading-tight text-muted-foreground">
+                      I have paid ₹{grandTotal} and am ready to send my order details.
+                    </label>
                   </div>
-                  <Button size="sm" onClick={handleOpenPaymentApp} className="w-full text-xs">
-                    Open Payment App
-                  </Button>
                 </div>
               </div>
             )}
