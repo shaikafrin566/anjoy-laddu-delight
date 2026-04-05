@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
 
 interface Order {
   orderId: string;
@@ -34,12 +35,18 @@ const SellerDashboard = () => {
 
   const fetchOrders = async () => {
     try {
-      const apiBase = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:3000";
+      const isProduction = window.location.hostname !== "localhost";
+      const apiBase = import.meta.env.VITE_API_BASE_URL && !isProduction 
+        ? import.meta.env.VITE_API_BASE_URL 
+        : isProduction ? "" : "http://localhost:3000";
+        
       const response = await fetch(`${apiBase}/api/orders`);
+      if (!response.ok) throw new Error("Failed to fetch orders");
       const data = await response.json();
-      setOrders(data);
+      setOrders(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Failed to fetch orders:", error);
+      toast.error("Could not load orders from the server.");
     } finally {
       setLoading(false);
     }
